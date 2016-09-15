@@ -495,7 +495,7 @@ def verify(message, debuglog=None):
         return False
     if 't' in sig and re.match(r"\d+$", sig['t']) is None:
         if debuglog is not None:
-            print ("t= value is not a decimal integer (%s)" % sig['t'], file = debuglog), file = debuglog)
+            print ("t= value is not a decimal integer (%s)" % sig['t'], file = debuglog)
         return False
     if 'x' in sig:
         if re.match(r"\d+$", sig['x']) is None:
