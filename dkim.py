@@ -463,7 +463,7 @@ def verify(message, debuglog=None):
         return False
     if 'bh' not in sig:
         if debuglog is not None:
-            print "signature missing bh=", file = debuglog)
+            print ("signature missing bh=", file = debuglog)
         return False
     if re.match(r"[\s0-9A-Za-z+/]+=*$", sig['bh']) is None:
         if debuglog is not None:
