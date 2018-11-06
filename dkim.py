@@ -19,6 +19,7 @@
 import base64
 import re
 import time
+import binascii
 
 # For compatibility with Python 2.4, import the sha module if hashlib
 # does not exist. When using Python 2.4, messages are signed with SHA-1
@@ -150,21 +151,21 @@ def asn1_parse(template, data):
     r = []
     i = 0
     for t in template:
-        tag = ord(data[i])
+        tag = data[i]
         i += 1
         if tag == t[0]:
-            length = ord(data[i])
+            length = data[i]
             i += 1
             if length & 0x80:
                 n = length & 0x7f
                 length = 0
                 for j in range(n):
-                    length = (length << 8) | ord(data[i])
+                    length = (length << 8) | data[i]
                     i += 1
             if tag == INTEGER:
                 n = 0
                 for j in range(length):
-                    n = (n << 8) | ord(data[i])
+                    n = (n << 8) | data[i]
                     i += 1
                 r.append(n)
             elif tag == BIT_STRING:
@@ -199,7 +200,10 @@ def asn1_length(n):
 def asn1_build(node):
     """Build an ASN.1 data structure based on pairs of (type, data)."""
     if node[0] == OCTET_STRING:
-        return chr(OCTET_STRING) + asn1_length(len(node[1])) + node[1]
+        s = chr(OCTET_STRING)
+        s += asn1_length(len(node[1]))
+        s += node[1].decode('unicode-escape')
+        return s
     if node[0] == NULL:
         assert node[1] is None
         return chr(NULL) + asn1_length(0)
@@ -352,6 +356,7 @@ def sign(message, selector, domain, privkey, identity=None, canonicalize=(Simple
     sign_headers = [x for x in headers if x[0].lower() in include_headers]
 
     body = canonicalize[1].canonicalize_body(body)
+    body = body.encode('utf-8')
 
     if HaveSHA256:
         h = hashlib.sha256()
@@ -385,10 +390,10 @@ def sign(message, selector, domain, privkey, identity=None, canonicalize=(Simple
     else:
         h = sha.sha()
     for x in sign_headers:
-        h.update(x[0])
-        h.update(":")
-        h.update(x[1])
-    h.update(sig)
+        h.update(x[0].encode('utf-8'))
+        h.update(":".encode('utf-8'))
+        h.update(x[1].encode('utf-8'))
+    h.update(sig.encode('utf-8'))
     d = h.digest()
     if debuglog is not None:
         print ("sign digest:", " ".join("%02x" % ord(x) for x in d), file = debuglog)
@@ -406,7 +411,9 @@ def sign(message, selector, domain, privkey, identity=None, canonicalize=(Simple
     if len(dinfo)+3 > modlen:
         raise ParameterError("Hash too large for modulus")
     sig2 = int2str(pow(str2int("\x00\x01"+"\xff"*(modlen-len(dinfo)-3)+"\x00"+dinfo), pk['privateExponent'], pk['modulus']), modlen)
-    sig += base64.b64encode(''.join(sig2))
+    sig_b = ''.join(sig2).encode()
+    sig_b64 = binascii.b2a_base64(sig_b, newline=False)
+    sig += sig_b64.decode('utf-8')
 
     return sig + "\r\n"
 
